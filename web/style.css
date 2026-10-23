@@ -1,0 +1,76 @@
+/* Basic stylesheet for dashboard.html
+   (the original style.css was not included in the report, so this one was written to match the layout shown in its output screenshot) */
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: #0b1a2b;
+  color: #e6edf5;
+}
+
+.app-container { display: flex; min-height: 100vh; }
+
+/* Sidebar */
+.sidebar {
+  width: 230px;
+  padding: 24px 18px;
+  background: linear-gradient(180deg, #0f2a47, #0b1a2b);
+  border-right: 1px solid #1d3a5c;
+}
+.sidebar h2 { margin: 0 0 28px; color: #3fb6ff; letter-spacing: 1px; }
+.nav-links { list-style: none; margin: 0; padding: 0; }
+.nav-links li { margin-bottom: 10px; }
+.nav-links a {
+  display: block;
+  padding: 10px 14px;
+  border-radius: 8px;
+  color: #e6edf5;
+  text-decoration: none;
+  border: 1px solid transparent;
+}
+.nav-links a:hover { background: #12365c; }
+.nav-links a.active { border-color: #3fb6ff; color: #3fb6ff; }
+
+/* Main */
+.main-content { flex: 1; padding: 28px 36px; }
+.page-title { margin: 0 0 20px; font-size: 28px; }
+
+.camera-wrapper { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+
+/* Video: mirrored, with the detection canvas drawn on top */
+.video-container { position: relative; display: inline-block; border-radius: 10px; overflow: hidden; background: #000; }
+.video-container video { display: block; max-width: 100%; transform: scaleX(-1); }
+.video-container canvas { position: absolute; top: 0; left: 0; }
+
+/* Controls */
+.controls-section {
+  min-width: 260px;
+  padding: 18px;
+  background: #102740;
+  border: 1px solid #1d3a5c;
+  border-radius: 10px;
+}
+.controls-section h3 { margin-top: 0; }
+.controls-section input {
+  width: 100%;
+  padding: 10px 12px;
+  margin: 8px 0 12px;
+  border-radius: 6px;
+  border: 1px solid #1d3a5c;
+  background: #0b1a2b;
+  color: #e6edf5;
+}
+.btn-primary {
+  width: 100%;
+  padding: 10px;
+  border: 0;
+  border-radius: 6px;
+  background: #1fcf8a;
+  color: #04251a;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-primary:hover { background: #2be59d; }
+.status-text { margin-top: 12px; font-size: 14px; color: #9fb4c9; }

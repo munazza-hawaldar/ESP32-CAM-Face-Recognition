@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - Face Recognition</title>
+  <link rel="stylesheet" href="style.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+</head>
+<body>
+  <div class="app-container">
+
+    <!-- SIDEBAR -->
+    <nav class="sidebar">
+      <h2>FaceRecog</h2>
+      <ul class="nav-links">
+        <li><a href="dashboard.html" class="active">Dashboard</a></li>
+        <li><a href="info.html">What is Face Recog?</a></li>
+        <li><a href="about.html">About/Student Info</a></li>
+      </ul>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+      <h1 class="page-title">ESP32_CAM</h1>
+
+      <div class="camera-wrapper">
+        <!-- VIDEO AREA -->
+        <div class="video-section">
+          <div class="video-container" id="container">
+            <video id="video" autoplay muted playsinline></video>
+          </div>
+        </div>
+
+        <!-- CONTROLS -->
+        <div class="controls-section">
+          <h3>Add New Face</h3>
+          <p>Register a new student or user into the system.</p>
+          <input type="text" id="name" placeholder="Enter Name">
+          <button class="btn-primary" onclick="captureFace()">Capture &amp; Save</button>
+          <p class="status-text" id="status">Loading models...</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const video = document.getElementById("video");
+    const statusText = document.getElementById("status");
+    const container = document.getElementById("container");
+
+    let canvas, ctx;
+    let labeledDescriptors = [];
+    let faceMatcher = null;
+
+    // CAMERA
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => { video.srcObject = stream; })
+      .catch(err => console.error("Camera error:", err));
+
+    // LOAD MODELS
+    async function loadModels() {
+      const URL = "https://justadudewhohacks.github.io/face-api.js/weights/"; // more stable than raw github
+
+      await Promise.all([
+        faceapi.nets.ssdMobilenetv1.loadFromUri(URL),
+        faceapi.nets.faceLandmark68Net.loadFromUri(URL),
+        faceapi.nets.faceRecognitionNet.loadFromUri(URL)
+      ]);
+
+      statusText.innerText = "Models Loaded";
+      loadSavedFaces(); // now safe to call
+    }
+
+    function loadSavedFaces() {
+      const saved = localStorage.getItem("faces");
+      if (!saved) {
+        statusText.innerText = "No saved faces yet";
+        return;
+      }
+
+      try {
+        const parsed = JSON.parse(saved);
+
+        labeledDescriptors = parsed.map(item => {
+          // === THE IMPORTANT FIX ===
+          // Convert plain arrays back -> Float32Array
+          const descriptors = item.descriptors.map(arr => new Float32Array(arr));
+          return new faceapi.LabeledFaceDescriptors(item.label, descriptors);
+        });
+
+        faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.6);
+
+        statusText.innerText = `Loaded ${labeledDescriptors.length} saved face(s)`;
+        console.log("Loaded:", labeledDescriptors.map(ld => ld.label));
+      } catch (e) {
+        console.error("Cannot load saved faces:", e);
+        statusText.innerText = "Error loading saved faces (corrupted data?)";
+        // Optional: localStorage.removeItem("faces"); // clean if broken
+      }
+    }
+
+    function saveFaces() {
+      const dataToSave = labeledDescriptors.map(ld => ({
+        label: ld.label,
+        descriptors: ld.descriptors.map(d => Array.from(d)) // Float32Array -> normal Array for JSON
+      }));
+
+      localStorage.setItem("faces", JSON.stringify(dataToSave));
+      console.log("Faces saved to localStorage");
+    }
+
+    // START AFTER VIDEO READY
+    video.addEventListener("loadedmetadata", async () => {
+      canvas = faceapi.createCanvasFromMedia(video);
+      container.appendChild(canvas);
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+
+      ctx = canvas.getContext("2d");
+
+      await loadModels();
+      setInterval(detectFaces, 80);
+    });
+
+    // FACE DETECTION LOOP
+    async function detectFaces() {
+      const detections = await faceapi
+        .detectAllFaces(video, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.6 }))
+        .withFaceLandmarks()
+        .withFaceDescriptors();
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      detections.forEach(det => {
+        let label = "Unknown";
+        let color = "#ff3333";
+
+        if (faceMatcher) {
+          const result = faceMatcher.findBestMatch(det.descriptor);
+          if (result.label !== "unknown") {
+            label = result.label;
+            color = "#00ff88";
+          }
+        }
+
+        const box = det.detection.box;
+        const padX = box.width * 0.3;
+        const padY = box.height * 0.35;
+
+        let x = box.x - padX;
+        let y = box.y - padY;
+        let w = box.width + padX * 2;
+        let h = box.height + padY * 2;
+
+        // MIRROR FIX
+        let drawX = canvas.width - (x + w);
+
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3;
+        ctx.strokeRect(drawX, y, w, h);
+
+        ctx.fillStyle = color;
+        ctx.fillRect(drawX, y - 28, ctx.measureText(label).width + 20, 26);
+
+        ctx.fillStyle = "#000";
+        ctx.font = "bold 16px Arial";
+        ctx.fillText(label, drawX + 10, y - 10);
+      });
+    }
+
+    // CAPTURE FACE
+    async function captureFace() {
+      const name = document.getElementById("name").value.trim();
+      if (!name) {
+        alert("Enter name");
+        return;
+      }
+
+      const tempCanvas = document.createElement("canvas");
+      tempCanvas.width = video.videoWidth;
+      tempCanvas.height = video.videoHeight;
+      const tctx = tempCanvas.getContext("2d");
+
+      // mirror save
+      tctx.translate(tempCanvas.width, 0);
+      tctx.scale(-1, 1);
+      tctx.drawImage(video, 0, 0);
+
+      const detection = await faceapi.detectSingleFace(tempCanvas, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.6 }))
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+
+      if (!detection) {
+        statusText.innerText = "No face detected";
+        return;
+      }
+
+      labeledDescriptors.push(
+        new faceapi.LabeledFaceDescriptors(name, [detection.descriptor])
+      );
+
+      faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.6);
+
+      saveFaces();
+
+      statusText.innerText = "Saved & Ready: " + name;
+      document.getElementById("name").value = "";
+    }
+  </script>
+</body>
+</html>
