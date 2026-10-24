@@ -4,6 +4,7 @@
 ![Arduino](https://img.shields.io/badge/Arduino_IDE-00979D?style=flat-square&logo=arduino&logoColor=white)
 ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat-square&logo=javascript&logoColor=black)
 ![face-api.js](https://img.shields.io/badge/face--api.js-1F2937?style=flat-square)
+[![Portfolio](https://img.shields.io/badge/Portfolio-Munazza_Hawaldar-FF79C6?style=flat-square&logo=googlechrome&logoColor=white)](https://whimsical-strudel-0f2465.netlify.app/)
 ![Diploma Capstone](https://img.shields.io/badge/Diploma-Capstone_2025--26-166534?style=flat-square)
 
 A low-cost face recognition system built around the **ESP32-CAM** module, with a browser dashboard to register and recognise faces in real time.
